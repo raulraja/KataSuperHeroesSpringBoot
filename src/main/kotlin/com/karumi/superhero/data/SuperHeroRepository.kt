@@ -1,9 +1,9 @@
 package com.karumi.superhero.data
 
-import arrow.core.Either
 import arrow.core.Option
 import arrow.core.toOption
-import com.karumi.superhero.data.common.TryLogger
+import arrow.fx.IO
+import com.karumi.superhero.data.common.or
 import com.karumi.superhero.data.model.mapToDomain
 import com.karumi.superhero.data.model.mapToSuperHeroEntity
 import com.karumi.superhero.domain.exceptions.DbStorageError
@@ -13,33 +13,27 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class SuperHeroRepository(
-  private val superHeroStorage: SuperHeroDataSource
+  val superHeroStorage: SuperHeroDataSource
 ) {
-  operator fun get(id: String): Either<Exception, Option<SuperHero>> = TryLogger {
-    superHeroStorage
-      .findById(id.toLong()).orElse(null).toOption().map { it.mapToDomain() }
-  }.toEither {
-    DbStorageError
-  }
 
-  fun addSuperHero(newSuperHero: NewSuperHero): Either<Exception, SuperHero> = TryLogger {
+  operator fun get(id: String): IO<Option<SuperHero>> =
+    suspend {
+      superHeroStorage.findById(id.toLong()).orElse(null).toOption().map { it.mapToDomain() }
+    } or DbStorageError
 
-    val superHeroEntity = newSuperHero.mapToSuperHeroEntity()
+  fun addSuperHero(newSuperHero: NewSuperHero): IO<SuperHero> =
+    suspend {
+      val superHeroEntity = newSuperHero.mapToSuperHeroEntity()
+      superHeroStorage.save(superHeroEntity).mapToDomain()
+    } or DbStorageError
 
-    superHeroStorage.save(superHeroEntity).mapToDomain()
-  }.toEither {
-    DbStorageError
-  }
+  fun getAll(): IO<List<SuperHero>> =
+    suspend {
+      superHeroStorage.findAll().map { it.mapToDomain() }
+    } or DbStorageError
 
-  fun getAll(): Either<Exception, List<SuperHero>> = TryLogger {
-    superHeroStorage.findAll().map { it.mapToDomain() }
-  }.toEither {
-    DbStorageError
-  }
-
-  fun searchBy(name: String): Either<Exception, List<SuperHero>> = TryLogger {
-    superHeroStorage.findByNameContainingIgnoreCase(name).map { it.mapToDomain() }
-  }.toEither {
-    DbStorageError
-  }
+  fun searchBy(name: String): IO<List<SuperHero>> =
+    suspend {
+      superHeroStorage.findByNameContainingIgnoreCase(name).map { it.mapToDomain() }
+    } or DbStorageError
 }

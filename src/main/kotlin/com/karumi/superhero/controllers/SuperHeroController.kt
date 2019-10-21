@@ -24,29 +24,19 @@ class SuperHeroController(
 ) {
 
   @RequestMapping("/superhero")
-  fun getSuperHeroesEndpoint(
+  suspend fun getSuperHeroesEndpoint(
     @RequestParam(name = "name", required = false) name: String?
   ): List<SuperHero> =
-    if (name == null) {
-      getAllSuperHeroes()
-    } else {
-      searchSuperHeroes(name)
-    }.fold(
-      ifRight = { it },
-      ifLeft = { throw it }
-    )
+    if (name == null) getAllSuperHeroes().suspended()
+    else searchSuperHeroes(name).suspended()
 
   @RequestMapping("/superhero/{id}")
-  fun getSuperHeroByIdEndpoint(@PathVariable("id") superHeroId: String): SuperHero =
-    getSuperHeroById(superHeroId).fold(
-      ifRight = { it },
-      ifLeft = { throw it }
-    )
+  suspend fun getSuperHeroByIdEndpoint(@PathVariable("id") superHeroId: String): SuperHero =
+    getSuperHeroById(superHeroId).suspended()
 
   @PostMapping("/superhero")
-  fun postSuperHeroEndpoint(@RequestBody newSuperHero: NewSuperHero) =
-    addSuperHero(newSuperHero).fold(
-      ifRight = { ResponseEntity(it, HttpStatus.CREATED) },
-      ifLeft = { throw it }
-    )
+  suspend fun postSuperHeroEndpoint(
+    @RequestBody newSuperHero: NewSuperHero
+  ): ResponseEntity<SuperHero> =
+    addSuperHero(newSuperHero).map { ResponseEntity(it, HttpStatus.CREATED) }.suspended()
 }
